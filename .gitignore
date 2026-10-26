@@ -1,0 +1,31 @@
+.venv/
+__pycache__/
+*.pyc
+transcricoes/
+musicas/*
+!musicas/README.md
+
+.venv-leve/
+
+# Configurações locais e credenciais
+.env
+.env.*
+.aws/
+.codex/
+.agents/
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Áudio pessoal, inclusive fora de musicas/
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.ogg
+*.opus
+*.aac
+*.wma
