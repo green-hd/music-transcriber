@@ -35,8 +35,7 @@ class PlayerTests(unittest.TestCase):
         word = {"start": 1, "end": 3.5, "text": "rejection!"}
         self.assertEqual(player.display_word(word), "rejection!")
         stretched = player.display_word(word, stretch=True)
-        self.assertTrue(stretched.startswith("rejectionnn"))
-        self.assertTrue(stretched.endswith("!"))
+        self.assertEqual(stretched, "rejectionnnn!")
         self.assertEqual(word["text"], "rejection!")
         self.assertEqual(player.display_word({**word, "end": 1.3}, True), "rejection!")
 
@@ -53,7 +52,7 @@ class PlayerTests(unittest.TestCase):
         self.assertTrue(cues[-1].text.startswith("rejectionnn"))
         self.assertEqual([t for t, _ in events], sorted(t for t, _ in events))
         self.assertEqual(events[-1][0], 4)
-        self.assertGreater(events[-2][0], 3)
+        self.assertLess(events[-2][0], 1.4)
 
     def test_zero_duration_or_punctuation_only_does_not_stretch(self):
         for word in ({"start": 1, "end": 1, "text": "oi"},
@@ -71,10 +70,11 @@ class PlayerTests(unittest.TestCase):
         self.assertGreater(times[1], times[0])
 
     def test_segment_without_word_times_still_animates(self):
-        events = player.lyric_events({"segments": [
-            {"start": 10, "end": 11, "text": "green", "words": []}]})
+        data = {"segments": [{"start": 10, "end": 14, "text": "green", "words": []}]}
+        events = player.lyric_events(data)
         self.assertEqual("".join(char for _, char in events), "green\n\n")
         self.assertEqual(events[0][0], 10)
+        self.assertEqual("".join(char for _, char in player.lyric_events(data, stretch=True)), "green\n\n")
         self.assertGreater(events[1][0], 10)
 
     def test_emphasis_is_applied_only_to_characters_of_loud_word(self):

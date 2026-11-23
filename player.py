@@ -13,16 +13,15 @@ import threading
 
 import transcriber as core
 
-BG = "#101714"
-PANEL = "#18231d"
-GREEN = "#a3edb2"
-TEXT = "#eff5ef"
-MUTED = "#94a69a"
-CAT = r""" /\_____/\
-/  o   o  \
-( == ^ == )
- )       (
-(_________)"""
+BG = "#121412"
+PANEL = "#1c201b"
+SIDEBAR = "#171a16"
+CONTROL = "#2b3229"
+BORDER = "#383f34"
+GREEN = "#c3f275"
+TEXT = "#f2f4ee"
+MUTED = "#afb8a7"
+SELECTED = "#34442c"
 
 
 def display_word(word, stretch=False):
@@ -34,7 +33,7 @@ def display_word(word, stretch=False):
     last = next((i for i in range(len(text) - 1, -1, -1) if text[i].isalpha()), None)
     if last is None:
         return text
-    count = min(12, max(1, int((duration - len(text) * 0.07) / 0.16)))
+    count = min(3, max(1, int((duration - len(text) * 0.07) / 0.32)))
     return text[:last + 1] + text[last] * count + text[last + 1:]
 
 
@@ -52,7 +51,7 @@ def word_cues(data, stretch=False):
     for segment in data["segments"]:
         for index, word in enumerate(segment["words"] or [segment]):
             offset += bool(index)
-            text = display_word(word, stretch)
+            text = display_word(word, stretch and bool(segment["words"]))
             cues.append(WordCue(word["start"], word["end"], offset, text))
             offset += len(text)
         offset += 2
@@ -67,10 +66,8 @@ def lyric_events(data, styled=False, stretch=False):
             if index:
                 events.append((word["start"], " ", ""))
             tag = "impact" if word.get("emphasis", False) else ""
-            text = display_word(word, stretch)
-            interval = max(0, word["end"] - word["start"]) / max(1, len(text))
-            if text == word["text"]:
-                interval = min(interval, 0.06)
+            text = display_word(word, stretch and bool(segment["words"]))
+            interval = min(0.06, max(0, word["end"] - word["start"]) / max(1, len(text)))
             for offset, char in enumerate(text):
                 events.append((word["start"] + offset * interval, char, tag))
         if events:
@@ -120,48 +117,102 @@ class Player:
         self.refresh_library()
         root.after(40, self.tick)
 
-    def label(self, parent, text, size=12, color=TEXT, **kwargs):
+    def label(self, parent, text, size=12, color=TEXT, weight="normal", **kwargs):
         return self.tk.Label(parent, text=text, bg=parent.cget("bg"), fg=color,
-                             font=("Segoe UI", size), **kwargs)
+                             font=("Segoe UI", size, weight), **kwargs)
+
+    def draw_brand(self, parent):
+        mark = self.tk.Canvas(parent, width=48, height=48, bg=SIDEBAR, highlightthickness=0)
+        mark.create_oval(2, 2, 46, 46, fill=SELECTED, outline=BORDER)
+        mark.create_oval(7, 7, 41, 41, outline=CONTROL, width=2)
+        for x, height in ((14, 8), (19, 15), (24, 23), (29, 15), (34, 8)):
+            mark.create_line(x, 24 - height / 2, x, 24 + height / 2,
+                             fill=GREEN, width=3, capstyle="round")
+        mark.pack(side="left")
 
     def button(self, parent, text, command, primary=False):
         return self.tk.Button(parent, text=text, command=command, relief="flat", bd=0,
-                              bg=GREEN if primary else "#283a2e", fg=BG if primary else TEXT,
-                              activebackground="#baf5c6", activeforeground=BG,
-                              font=("Segoe UI", 11, "bold"), padx=17, pady=10, cursor="hand2")
+                              bg=GREEN if primary else CONTROL, fg=BG if primary else TEXT,
+                              activebackground="#d7fa9f" if primary else SELECTED,
+                              activeforeground=BG if primary else TEXT,
+                              highlightthickness=1, highlightbackground=parent.cget("bg"),
+                              highlightcolor=GREEN, disabledforeground="#737d6e",
+                              font=("Segoe UI", 10, "bold"), padx=16, pady=9, cursor="hand2")
 
     def build(self):
         tk, ttk = self.tk, self.ttk
         style = ttk.Style(self.root)
         style.theme_use("clam")
-        style.configure("Green.Horizontal.TProgressbar", troughcolor=PANEL, background=GREEN,
-                        borderwidth=0, lightcolor=GREEN, darkcolor=GREEN)
-        sidebar = tk.Frame(self.root, bg=PANEL, width=270, padx=20, pady=22)
+        style.configure("Green.Horizontal.TProgressbar", troughcolor=CONTROL, background=GREEN,
+                        borderwidth=0, lightcolor=GREEN, darkcolor=GREEN, thickness=5)
+        style.configure("Green.TCombobox", arrowcolor=TEXT, bordercolor=BORDER,
+                        lightcolor=CONTROL, darkcolor=CONTROL)
+        style.map("Green.TCombobox", foreground=[("readonly", TEXT)],
+                  fieldbackground=[("readonly", CONTROL)], background=[("readonly", CONTROL)])
+        self.root.option_add("*TCombobox*Listbox.background", PANEL)
+        self.root.option_add("*TCombobox*Listbox.foreground", TEXT)
+        self.root.option_add("*TCombobox*Listbox.selectBackground", SELECTED)
+        self.root.option_add("*TCombobox*Listbox.selectForeground", GREEN)
+
+        sidebar = tk.Frame(self.root, bg=SIDEBAR, width=255, padx=19, pady=24,
+                           highlightthickness=1, highlightbackground=BORDER)
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
-        tk.Label(sidebar, text=CAT, font=("Courier New", 18, "bold"), fg=GREEN, bg=PANEL).pack(pady=(0, 5))
-        self.label(sidebar, "by green", 12, GREEN).pack()
-        self.label(sidebar, "SUA BIBLIOTECA", 10, MUTED, anchor="w").pack(fill="x", pady=(32, 12))
-        self.library = tk.Listbox(sidebar, bg=PANEL, fg=TEXT, selectbackground="#35543d",
-                                  selectforeground=GREEN, highlightthickness=0, bd=0,
-                                  font=("Segoe UI", 11), activestyle="none", exportselection=False)
+        brand = tk.Frame(sidebar, bg=SIDEBAR)
+        brand.pack(fill="x", pady=(0, 27))
+        self.draw_brand(brand)
+        brand_text = tk.Frame(brand, bg=SIDEBAR)
+        brand_text.pack(side="left", padx=10)
+        self.label(brand_text, "green", 21, weight="bold", anchor="w").pack(fill="x")
+        self.label(brand_text, "Música e letra", 9, MUTED, anchor="w").pack(fill="x")
+        library_header = tk.Frame(sidebar, bg=SIDEBAR)
+        library_header.pack(fill="x", pady=(0, 9))
+        self.label(library_header, "Biblioteca", 11, weight="bold").pack(side="left")
+        self.library_count = self.label(library_header, "", 9, MUTED)
+        self.library_count.pack(side="right")
+        self.library = tk.Listbox(sidebar, bg=PANEL, fg=TEXT, selectbackground=SELECTED,
+                                  selectforeground=GREEN, highlightthickness=1, highlightbackground=BORDER,
+                                  highlightcolor=GREEN, bd=0, font=("Segoe UI", 11),
+                                  activestyle="none", exportselection=False)
         self.library.pack(fill="both", expand=True)
         self.library.bind("<<ListboxSelect>>", self.select_library)
         self.library.bind("<Double-Button-1>", lambda event: self.prepare())
         self.open_button = self.button(sidebar, "+ Abrir música", self.open_file)
-        self.open_button.pack(fill="x", pady=(14, 8))
-        self.label(sidebar, "Seu áudio. Sua letra. Seu ritmo.", 9, MUTED).pack(pady=(8, 0))
+        self.open_button.pack(fill="x", pady=(14, 0))
 
-        main = tk.Frame(self.root, bg=BG, padx=30, pady=24)
+        main = tk.Frame(self.root, bg=BG, padx=26, pady=24)
         main.pack(side="left", fill="both", expand=True)
-        self.label(main, "GREEN / MUSIC & LYRICS", 10, GREEN, anchor="w").pack(fill="x")
-        self.title = self.label(main, "Escolha uma música", 24, anchor="w", wraplength=630, justify="left")
-        self.title.pack(fill="x", pady=(12, 4))
-        self.status = self.label(main, "Abra uma faixa para começar.", 10, MUTED, anchor="w",
-                                 wraplength=620, justify="left")
-        self.status.pack(fill="x", pady=(0, 18))
+        self.title = self.label(main, "Escolha uma música", 28, weight="bold", anchor="w",
+                                wraplength=600, justify="left")
+        self.title.pack(fill="x", pady=(0, 3))
+        self.status = self.label(main, "Selecione uma faixa na biblioteca ou abra um arquivo.", 10, MUTED,
+                                 anchor="w", wraplength=600, justify="left")
+        self.status.pack(fill="x", pady=(0, 10))
 
-        options = tk.Frame(main, bg=BG)
+        def wrap_header(event):
+            width = max(100, event.width - 56)
+            self.title.configure(wraplength=width)
+            self.status.configure(wraplength=width)
+
+        main.bind("<Configure>", wrap_header)
+
+        settings_visible = tk.BooleanVar(master=self.root, value=False)
+
+        def toggle_settings():
+            if settings_visible.get():
+                settings.pack(fill="x", before=lyric_frame, pady=(8, 0))
+            else:
+                settings.pack_forget()
+            settings_toggle.configure(text="Configurações  −" if settings_visible.get() else "Configurações  +")
+
+        settings_toggle = tk.Checkbutton(main, text="Configurações  +", variable=settings_visible,
+                                         command=toggle_settings, indicatoron=False, relief="flat", bd=0,
+                                         bg=CONTROL, fg=TEXT, activebackground=SELECTED,
+                                         activeforeground=TEXT, selectcolor=SELECTED, padx=10, pady=5,
+                                         highlightbackground=BG, highlightcolor=GREEN, cursor="hand2")
+        settings_toggle.pack(anchor="w")
+        settings = tk.Frame(main, bg=BG)
+        options = tk.Frame(settings, bg=BG)
         options.pack(fill="x")
         self.mode = tk.StringVar(value="Equilibrado · small")
         self.language = tk.StringVar(value="auto")
@@ -173,7 +224,8 @@ class Player:
             group = tk.Frame(options, bg=BG)
             group.pack(side="left", padx=(0, 16))
             self.label(group, title, 9, MUTED, anchor="w").pack(fill="x", pady=(0, 6))
-            ttk.Combobox(group, textvariable=variable, values=values, state="readonly", width=width).pack()
+            ttk.Combobox(group, textvariable=variable, values=values, state="readonly",
+                         style="Green.TCombobox", width=width).pack()
         self.refazer = tk.BooleanVar(value=False)
         self.offline = tk.BooleanVar(value=False)
         flags = tk.Frame(options, bg=BG)
@@ -181,66 +233,68 @@ class Player:
         for title, variable in (("Refazer", self.refazer), ("Offline", self.offline)):
             tk.Checkbutton(flags, text=title, variable=variable, bg=BG, fg=MUTED,
                            activebackground=BG, activeforeground=GREEN, selectcolor=PANEL).pack(anchor="w")
-        self.label(main, "CONTEXTO  ·  nomes ou expressões da música (opcional)", 9, MUTED,
+        self.label(settings, "CONTEXTO  ·  nomes ou expressões da música (opcional)", 9, MUTED,
                    anchor="w").pack(fill="x", pady=(14, 6))
-        self.context = tk.Entry(main, bg=PANEL, fg=TEXT, insertbackground=GREEN, relief="flat",
+        self.context = tk.Entry(settings, bg=PANEL, fg=TEXT, insertbackground=GREEN, relief="flat",
                                 font=("Segoe UI", 11))
         self.context.pack(fill="x", ipady=7)
 
-        lyric_frame = tk.Frame(main, bg=PANEL, padx=20, pady=18)
-        lyric_frame.pack(fill="both", expand=True, pady=18)
-        lyric_header = tk.Frame(lyric_frame, bg=PANEL)
-        lyric_header.pack(fill="x", pady=(0, 12))
-        self.label(lyric_header, "LETRA", 9, GREEN).pack(side="left")
-        self.emphasis = tk.BooleanVar(value=True)
-        tk.Checkbutton(lyric_header, text="Ênfase", variable=self.emphasis, command=self.update_lyric_font,
-                       bg=PANEL, fg=MUTED, selectcolor=BG, activebackground=PANEL,
-                       activeforeground=GREEN).pack(side="right", padx=(8, 0))
-        self.font_choice = tk.StringVar(value="Serifada")
-        font_picker = ttk.Combobox(lyric_header, textvariable=self.font_choice, state="readonly",
-                                  values=["Serifada", "Limpa", "Monoespaçada"], width=14)
-        font_picker.pack(side="right")
+        lyric_frame = tk.Frame(main, bg=PANEL, padx=23, pady=16,
+                               highlightthickness=1, highlightbackground=BORDER)
+        lyric_frame.pack(fill="both", expand=True, pady=(14, 12))
+        self.label(lyric_frame, "Letra", 10, GREEN, weight="bold", anchor="w").pack(fill="x", pady=(0, 8))
+        tk.Frame(lyric_frame, bg=BORDER, height=1).pack(fill="x", pady=(0, 8))
+        effects = tk.Frame(settings, bg=BG)
+        effects.pack(fill="x", pady=(10, 0))
+        self.emphasis = tk.BooleanVar(value=False)
+        tk.Checkbutton(effects, text="Ênfase", variable=self.emphasis, command=self.update_lyric_font,
+                       bg=BG, fg=MUTED, selectcolor=PANEL, activebackground=BG,
+                       activeforeground=GREEN).pack(side="left", padx=(0, 8))
+        self.font_choice = tk.StringVar(value="Limpa")
+        font_picker = ttk.Combobox(effects, textvariable=self.font_choice, state="readonly",
+                                  style="Green.TCombobox", values=["Serifada", "Limpa", "Monoespaçada"], width=14)
+        font_picker.pack(side="left", padx=(0, 8))
         font_picker.bind("<<ComboboxSelected>>", self.update_lyric_font)
-        effects = tk.Frame(lyric_frame, bg=PANEL)
-        effects.pack(fill="x", pady=(0, 6))
         self.stretch = tk.BooleanVar(value=False)
-        self.show_dot = tk.BooleanVar(value=True)
+        self.show_dot = tk.BooleanVar(value=False)
         for title, variable, callback in (("Alongar palavras", self.stretch, self.rebuild_animation),
                                           ("Bolinha karaokê", self.show_dot, self.update_dot)):
             tk.Checkbutton(effects, text=title, variable=variable, command=callback,
-                           bg=PANEL, fg=MUTED, selectcolor=BG, activebackground=PANEL,
-                           activeforeground=GREEN).pack(side="left", padx=(0, 12))
+                           bg=BG, fg=MUTED, selectcolor=PANEL, activebackground=BG,
+                           activeforeground=GREEN).pack(side="left", padx=(0, 8))
         self.lyrics = tk.Text(lyric_frame, bg=PANEL, fg=TEXT, wrap="word",
                               relief="flat", highlightthickness=0, spacing1=18, spacing3=8, spacing2=18,
                               state="disabled", cursor="arrow", padx=0, height=6)
         self.lyrics.pack(fill="both", expand=True)
         self.dot = tk.Canvas(self.lyrics, width=14, height=14, bg=PANEL, highlightthickness=0)
-        self.dot.create_oval(1, 1, 13, 13, fill="#35543d", outline="")
+        self.dot.create_oval(1, 1, 13, 13, fill=SELECTED, outline="")
         self.dot.create_oval(4, 4, 10, 10, fill=GREEN, outline="")
         self.update_lyric_font()
-        self.set_lyrics("A música ganha voz aqui.\n\nEscolha uma faixa e clique em Preparar & tocar.")
-        self.progress = ttk.Progressbar(main, style="Green.Horizontal.TProgressbar", maximum=1)
-        self.progress.pack(fill="x")
-        self.time_label = self.label(main, "00:00 / 00:00", 10, MUTED, anchor="e")
-        self.time_label.pack(fill="x", pady=(5, 10))
-        controls = tk.Frame(main, bg=BG)
+        self.set_lyrics("A letra sincronizada aparece aqui.")
+        playback = tk.Frame(main, bg=PANEL, padx=12, pady=10,
+                            highlightthickness=1, highlightbackground=BORDER)
+        playback.pack(side="bottom", before=lyric_frame, fill="x")
+        timeline = tk.Frame(playback, bg=PANEL)
+        timeline.pack(fill="x", pady=(0, 7))
+        self.time_label = self.label(timeline, "00:00 / 00:00", 9, MUTED)
+        self.time_label.pack(side="right", padx=(9, 0))
+        self.progress = ttk.Progressbar(timeline, style="Green.Horizontal.TProgressbar", maximum=1)
+        self.progress.pack(side="left", fill="x", expand=True)
+
+        controls = tk.Frame(playback, bg=PANEL)
         controls.pack(fill="x")
         self.prepare_button = self.button(controls, "Preparar & tocar", self.prepare, True)
         self.prepare_button.pack(side="left")
         self.prepare_button.configure(state="disabled")
         self.pause_button = self.button(controls, "Pausar", self.toggle_pause)
-        self.pause_button.pack(side="left", padx=8)
+        self.pause_button.pack(side="left", padx=6)
         self.pause_button.configure(state="disabled")
-        self.label(controls, "VOL", 9, MUTED).pack(side="left", padx=(8, 3))
-        self.volume = tk.Scale(controls, from_=0, to=100, orient="horizontal", length=105,
-                               bg=BG, fg=MUTED, troughcolor=PANEL, highlightthickness=0,
+        self.volume = tk.Scale(controls, from_=0, to=100, orient="horizontal", length=100,
+                               bg=PANEL, fg=MUTED, troughcolor=CONTROL, highlightthickness=0,
                                activebackground=GREEN, command=self.change_volume)
         self.volume.set(10)
-        self.volume.pack(side="left")
-        # Reserva espaço para os controles antes de expandir a área da letra.
-        controls.pack_configure(side="bottom", before=lyric_frame)
-        self.time_label.pack_configure(side="bottom", before=lyric_frame)
-        self.progress.pack_configure(side="bottom", before=lyric_frame)
+        self.volume.pack(side="right")
+        self.label(controls, "Volume", 9, MUTED).pack(side="right", padx=(6, 5))
 
     def update_lyric_font(self, event=None):
         from tkinter import font
@@ -327,6 +381,8 @@ class Player:
                              if folder.is_dir() for p in folder.iterdir()
                              if p.is_file() and p.suffix.lower() in core.AUDIO_EXTENSIONS},
                             key=lambda p: p.name.casefold())
+        count = len(self.files)
+        self.library_count.configure(text=f"{count} faixa" if count == 1 else f"{count} faixas")
         self.library.delete(0, "end")
         for path in self.files:
             self.library.insert("end", path.stem)

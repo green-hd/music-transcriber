@@ -128,7 +128,7 @@ Referências das dependências: [faster-whisper](https://github.com/SYSTRAN/fast
 
 ## Fontes, ênfase e revisão da transcrição
 
-No cabeçalho da letra do player, escolha **Serifada**, **Limpa** ou **Monoespaçada**. O aplicativo procura uma fonte instalada no Windows/Linux e usa uma alternativa se ela não existir. A opção **Ênfase** deixa palavras mais intensas em negrito e verde; pode ser ligada ou desligada durante a reprodução.
+Em **Configurações** no player, escolha **Serifada**, **Limpa** ou **Monoespaçada**. O aplicativo procura uma fonte instalada no Windows/Linux e usa uma alternativa se ela não existir. A fonte padrão é **Limpa**. A opção **Ênfase** pode ser ligada durante a reprodução para destacar palavras mais intensas em negrito e verde.
 
 O destaque é uma aproximação pela energia do áudio entre 150 e 4000 Hz, comparando cada palavra com a música e com os segundos próximos. A análise usa blocos de 50 ms, sem outro modelo de IA nem manter o áudio inteiro na memória. O volume do player não altera os destaques. Instrumentos na mesma faixa de frequência também influenciam: o efeito não detecta emoção nem separa a voz. Se a análise falhar, a reprodução continua sem o efeito.
 
@@ -143,13 +143,13 @@ Informar o idioma e nomes próprios no contexto continua ajudando. Para melhorar
 
 ## Alongamento e bolinha de karaokê
 
-No painel da letra há duas opções independentes:
+Em **Configurações** há duas opções independentes:
 
-- **Alongar palavras**: palavras com duração reconhecida longa ganham repetições da última letra durante a exibição, como `rejectionnnnn`. Vem desligada. É uma estimativa visual baseada no tempo da palavra, não uma identificação da vogal sustentada. A transcrição, o cache e os arquivos exportados continuam com a grafia original.
-- **Bolinha karaokê**: um indicador verde acompanha a palavra cantada, acima das letras. Funciona junto com a digitação por caracteres, pausa com o áudio e some nos intervalos entre palavras. Vem ligada.
+- **Alongar palavras**: palavras com duração reconhecida longa ganham até três repetições da última letra durante a exibição, como `rejectionnnn`. Vem desligada. É uma estimativa visual baseada no tempo da palavra, não uma identificação da vogal sustentada. A transcrição, o cache e os arquivos exportados continuam com a grafia original.
+- **Bolinha karaokê**: um indicador verde acompanha a palavra cantada, acima das letras. Funciona junto com a digitação por caracteres, pausa com o áudio e some nos intervalos entre palavras. Vem desligada.
 
 As duas opções podem ser alteradas enquanto a música toca ou está pausada, sem transcrever novamente. A precisão dos efeitos depende dos timestamps do Whisper; palavras com tempos incorretos podem parecer alongadas ou fora de sincronia. As animações não exigem outro modelo nem downloads adicionais.
 
 ## Player sem internet
 
-Abra `python player.py`, marque **Offline** ao lado de Qualidade/Idioma, escolha a faixa e clique em **Preparar & tocar**. Nesse modo, o reconhecimento recebe `--offline` e usa somente arquivos locais, sem consultar o Hugging Face. O modelo da qualidade escolhida precisa ter sido baixado anteriormente, a menos que já exista uma transcrição em cache para a mesma música e configuração. Se faltar o modelo, desmarque Offline e prepare a faixa com internet uma vez. As fontes, animações, análise de intensidade e reprodução funcionam localmente.
+Abra `python player.py`, abra **Configurações** e marque **Offline**, escolha a faixa e clique em **Preparar & tocar**. Nesse modo, o reconhecimento recebe `--offline` e usa somente arquivos locais, sem consultar o Hugging Face. O modelo da qualidade escolhida precisa ter sido baixado anteriormente, a menos que já exista uma transcrição em cache para a mesma música e configuração. Se faltar o modelo, desmarque Offline e prepare a faixa com internet uma vez. As fontes, animações, análise de intensidade e reprodução funcionam localmente.
